@@ -4,11 +4,11 @@ import os
 import re
 
 # Your settings (from Render environment variables)
-API_ID       = int(os.getenv('38218054'))
-API_HASH     = os.getenv('15f4186fa3b18bdc191ba9f4f5cfd7a1')
-PHONE        = os.getenv('+2349016571580')
-SOURCE       = os.getenv('@cryptoinsidebets')
-TARGET       = os.getenv('@cryptoinsderpump')
+API_ID       = int(os.getenv('API_ID'))
+API_HASH     = os.getenv('API_HASH')
+PHONE        = os.getenv('PHONE')
+SOURCE       = os.getenv('SOURCE_CHANNEL')
+TARGET       = os.getenv('TARGET_CHANNEL')
 
 # ←←←←←←←←←←←←←←←←←  EDIT THESE 3 LINES BELOW  ←←←←←←←←←←←←←←←←←
 REPLACE_USERNAME = "@Cryptoinsiderbets"           # ← What every @username becomes
