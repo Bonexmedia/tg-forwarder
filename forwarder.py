@@ -76,7 +76,7 @@ async def main():
 
     await client.start(
         phone=PHONE,
-        code_callback=lambda: os.environ['TG_CODE']
+        code_callback=lambda: os.environ['55568']
     )
 
     me = await client.get_me()
