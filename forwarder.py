@@ -1,30 +1,28 @@
-# forwarder.py - Advanced Cleaner + Replacer
+# forwarder.py - Advanced Cleaner + Replacer (Render-ready, no 2FA support)
 from telethon import TelegramClient, events
 import os
 import re
+import asyncio
 
-# Your settings (from Render environment variables)
-API_ID       = int(os.getenv('API_ID'))
-API_HASH     = os.getenv('API_HASH')
-PHONE        = os.getenv('PHONE')
-SOURCE       = os.getenv('SOURCE_CHANNEL')
-TARGET       = os.getenv('TARGET_CHANNEL')
+# === CONFIG FROM ENVIRONMENT VARIABLES ===
+API_ID       = int(os.environ['API_ID'])
+API_HASH     = os.environ['API_HASH']
+PHONE        = os.environ['PHONE']
+SOURCE       = os.environ['SOURCE_CHANNEL']
+TARGET       = os.environ['TARGET_CHANNEL']
 
-# ←←←←←←←←←←←←←←←←←  EDIT THESE 3 LINES BELOW  ←←←←←←←←←←←←←←←←←
-REPLACE_USERNAME = "@Cryptoinsiderbets"           # ← What every @username becomes
-REMOVE_TELEGRAM_LINKS = True              # ← Set to False if you ever want to allow t.me links
+# ←←←←←←←←←←←←←←←←←  EDIT THESE BELOW  ←←←←←←←←←←←←←←←←←
+REPLACE_USERNAME = "@Cryptoinsiderbets"           # every @username becomes this
+REMOVE_TELEGRAM_LINKS = True                      # False = keep t.me links
 
-# Keywords to replace (case-insensitive)
-# Format: "old word" : "new word or ***"
+# Keywords to replace (add as many as you want)
 KEYWORDS_TO_REPLACE = {
     "shit": "****",
     "fuck": "****",
     "scam": "opportunity",
     "free money": "hard work",
-    # add as many as you want ↓
-    # "oldname": "NewBrand",
+    # "oldword": "newword",
 }
-# ============================================================
 
 client = TelegramClient('sess', API_ID, API_HASH)
 
@@ -36,17 +34,13 @@ def clean_text(text: str) -> str:
     if not text:
         return text
 
-    # 1. Replace keywords
     for bad, good in KEYWORDS_TO_REPLACE.items():
         text = re.sub(re.escape(bad), good, text, flags=re.IGNORECASE)
 
-    # 2. Remove ALL Telegram links
     if REMOVE_TELEGRAM_LINKS:
         text = TG_LINKS.sub('', text)
 
-    # 3. Replace every @username with your chosen one
     text = USERNAME_MENTION.sub(REPLACE_USERNAME, text)
-
     return text.strip()
 
 @client.on(events.NewMessage(chats=SOURCE))
@@ -54,33 +48,42 @@ async def handler(event):
     try:
         msg = event.message
 
-        # If the message was already forwarded from somewhere else → keep original forward tag
-        if msg.fwd_from:
+        if msg.fwd_from:  # already forwarded → keep original tag
             await client.forward_messages(TARGET, msg)
-            print(f"Forwarded (kept original tag) → {msg.id}")
+            print(f"Forwarded (original tag kept) → {msg.id}")
             return
 
-        # Normal message → clean andily copy with our rules
         cleaned_text = clean_text(msg.message) if msg.message else None
-
-        # Download media if present
         file = await msg.download_media() if msg.media else None
 
         await client.send_message(
             entity=TARGET,
-            message=cleaned_text,
+            message=cleaned_text or '',
             file=file,
-            formatting_entities=msg.entities,   # keeps bold, italic, links (except t.me)
+            formatting_entities=msg.entities,
             silent=True
         )
-        print(f"Cleaned & posted → {msg.id}")
+        print(f"Cleaned & sent → {msg.id}")
 
     except Exception as e:
         print(f"Error: {e}")
 
-print("Advanced Forwarder starting...")
-client.start(phone=PHONE)
-print(f"Watching {SOURCE} → {TARGET}")
-print(f"• All @username → {REPLACE_USERNAME}")
-print(f"• Telegram links removed: {REMOVE_TELEGRAM_LINKS}")
-client.run_until_disconnected()
+# ———————————————— NON-INTERACTIVE LOGIN (NO 2FA) ————————————————
+async def main():
+    print("Advanced Forwarder starting...")
+
+    await client.start(
+        phone=PHONE,
+        code_callback=lambda: os.environ['TG_CODE']   # only reads the 5-digit code from env
+    )
+
+    me = await client.get_me()
+    print(f"Logged in as {me.first_name} (@{me.username or 'no username'})")
+    print(f"Watching {SOURCE} → {TARGET}")
+    print(f"• All @usernames → {REPLACE_USERNAME}")
+    print(f"• t.me links removed → {REMOVE_TELEGRAM_LINKS}")
+
+    await client.run_until_disconnected()
+
+if __name__ == '__main__':
+    asyncio.run(main())
